@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Click</title>
+</head>
+
+<body>
+    <div id="list"></div>
+    <script>
+        const evtSource = new EventSource("http://user08.test1.seschool.ru:3000/api/ov4/subscribe");
+        evtSource.onmessage = function (event) {
+            const newElement = document.createElement("li");
+            const eventList = document.getElementById('list');
+            newElement.innerHTML = "message: " + event.data;
+            eventList.appendChild(newElement);
+        }
+    </script>
+</body>
+
+</html>
