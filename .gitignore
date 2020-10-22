@@ -1,1 +1,5 @@
 /node_modules
+/client
+/.vscode
+.env
+test.http

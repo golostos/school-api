@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API для чата</title>
+</head>
+
+<body>
+    <h1>API для чата</h1>
+    <h3>Получить последние 10 сообщений:</h3>
+
+    <code>GET http://user08.test1.seschool.ru:3000/api/chat/</code>
+
+    <h3>Отправить сообщение в чат:</h3>
+    <p>TOKEN для отправки сообщений можно получить у преподавателя. TOKEN используется для безопасности, чтобы никто посторонний не мог забить БД.</p>
+
+    <pre><code>POST http://user08.test1.seschool.ru:3000/api/chat/
+Content-Type: application/json
+Authorization: bearer TOKEN
+
+{
+    "username": "John Smith",
+    "email": "test@exaple.com",
+    "message": "Hello world!"
+}</code></pre>
+    
+    <h3>Подписка на сообщения от других пользователей:</h3>
+    <p>Чтобы получать сообщения от других пользователей необходимо подписаться на события сервера через:</p>
+    <code>new EventSource("http://user08.test1.seschool.ru:3000/api/chat/subscribe")</code>
+    <p>Например:</p>
+    <pre><code>&lt;script&gt;
+const evtSource = new EventSource("http://user08.test1.seschool.ru:3000/api/chat/subscribe");
+evtSource.onmessage = function (event) {
+    const newElement = document.createElement("li");
+    const eventList = document.getElementById('list');
+    newElement.innerHTML = "message: " + event.data;
+    eventList.appendChild(newElement);
+}
+&lt;/script&gt;</code></pre>
+
+</body>
+
+</html>
