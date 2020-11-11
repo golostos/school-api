@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require('path')
 const crypto = require('crypto')
+const { body, validationResult } = require('express-validator');
 
 const app = express();
 
@@ -43,40 +44,53 @@ function main() {
     res.sendFile(path.join(__dirname, './apiinfo.html'))
   });
 
-  app.post("/api/chat", (req, res, next) => {
-    const authHeader = req.get('Authorization')
-    if (authHeader && authHeader.length) {
-      const token = authHeader.replace(/(bearer|jwt)\s+/, '')
-      if (token === process.env.TOKEN) {
-        return next()
+  app.post("/api/chat", (req, res, next) => {      
+      const authHeader = req.get('Authorization')
+      if (authHeader && authHeader.length) {
+        const token = authHeader.replace(/(bearer|jwt)\s+/, '')
+        if (token === process.env.TOKEN) {
+          return next()
+        }
       }
-    }
-    next({ error: "Wrong token" })
-  },
+      next({ errors: {error: "Wrong token", type: 'token'}, status: 401 })
+    }, [
+      body('username').trim().isLength({min: 2, max: 100}),
+      body('email').trim().isLength({ max: 100}).isEmail().normalizeEmail(),
+      body('message').trim().isLength({min: 2, max: 250})
+    ], 
+    (req, res, next) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return next({ errors: {error: 'Validation failed', type: 'val', payload: errors.array()}, status: 400 })
+      } else next()
+    },
     async (req, res, next) => {
       const { username, email, message } = req.body;
       try {
-        await MessageModel.create({ username, email, message });
-        res.json({ username, email, message })
+        req.messageDB = await MessageModel.create({ username, email, message });
+        res.json(req.messageDB)
         next()
       } catch (error) {
-        next({ error: 'Can\'t create the message in the DB' })
+        next({ errors: {error: 'Can\'t create the message in the DB', type: 'create'}, status: 500 })
       }
     },
     (req, res, next) => {
-      const { username, email, message } = req.body;
       for (const client of clients.values()) {
-        client.write(`data: ${JSON.stringify({ username, email, message })}\n\n`);
+        client.write(`data: ${JSON.stringify(req.messageDB)}\n\n`);
       }
     }
   );
 
   app.get("/api/chat", async (req, res, next) => {
     try {
-      const messages = await MessageModel.findAll({ order: [['id', 'DESC']], limit: 10 })
+      const limit = parseInt(req.query.limit)
+      const offset = parseInt(req.query.offset)
+      const messages = await MessageModel.findAll({ order: [['id', 'DESC']], 
+                                                limit: (isNaN(limit) ? 10 : (limit < 100 ? limit : 100)), 
+                                                offset: (isNaN(offset) ? 0 : offset) })
       res.json(messages)
     } catch (error) {
-      next({ error: 'Can\'t read messages from the DB' })
+      next({ errors: {error: 'Can\'t read messages from the DB', type: 'get'}, status: 500 })
     }
   })
 
@@ -98,9 +112,9 @@ function main() {
     });
   });
 
-  app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(401).json(err);
+  app.use(({errors = {}, status = 500}, req, res, next) => {
+    console.error(errors);
+    res.status(status).json(errors);
   })
 
   app.listen(process.env.PORT, () => {
